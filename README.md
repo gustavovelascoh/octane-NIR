@@ -1,4 +1,4 @@
-#Octane-NIR
+# Octane-NIR
 
 Example of NIR spectrogram processing for regression using Python. Based on [this guide](https://www.mathworks.com/help/stats/examples/partial-least-squares-regression-and-principal-components-regression.html) from Mathworks.
 
