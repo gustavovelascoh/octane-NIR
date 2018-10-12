@@ -14,4 +14,4 @@ Example of NIR spectrogram processing for regression using Python. Based on [thi
 
 Preview:
 
-![3dview](imgs/datasets_3d.png "3D plot of datasets")
+![3dview](img/datasets_3d.png "3D plot of datasets")
