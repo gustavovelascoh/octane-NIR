@@ -10,9 +10,9 @@ def plot_ds(ax, wls, xdata, ydata):
     '''
     Plot dataset
     ax: matplotlib Axes3DSubplot
-    wls: Numpy ndarray
-    xdata: Pandas DataFrame
-    ydata: Pandas Series
+    wls: Numpy ndarray: List of wavelength
+    xdata: Pandas DataFrame: Measurements
+    ydata: Pandas Series: Octane numbers
     '''
 
     wls_len = len(wls)
@@ -23,8 +23,7 @@ def plot_ds(ax, wls, xdata, ydata):
 
         ax.plot(on_ar, wls, vals)
 
-if __name__ == "__main__":
-
+def main():
     FILENAME = "octane.xlsx"
     oct_df = pandas.read_excel(FILENAME)
     FILENAME = "gasoline.csv"
@@ -64,3 +63,6 @@ if __name__ == "__main__":
     ax1.set_zlabel("Value")
 
     plt.show()
+
+if __name__ == "__main__":
+    main()
