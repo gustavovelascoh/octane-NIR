@@ -15,3 +15,4 @@ Example of NIR spectrogram processing for regression using Python. Based on [thi
 Preview:
 
 ![3dview](img/datasets_3d.png "3D plot of datasets")
+![PLSR vs PCR](img/plsr-pcr.png "PLSR vs PCR comparison")
