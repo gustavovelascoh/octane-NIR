@@ -46,26 +46,37 @@ if __name__ == "__main__":
 
     pls = PLSRegression(n_components=nc)
     pls2 = PLSRegression(n_components=2)
-    pca = PCA(n_components=2)
+    pca = PCA(n_components=nc)
+    pca2 = PCA(n_components=2)
     #pls2 = PLSCanonical(n_components=nc)
     pls.fit(xdata, ydata)
     pls2.fit(xdata, ydata)
     pca.fit(xdata)
+    pca2.fit(xdata)
 
     y2fit = pls2.predict(xdata)
-
     pca_scores = pca.transform(xdata)
-    pcr = LinearRegression().fit(pca_scores[:,0:2], ydata)
+    pca2_scores = pca2.transform(xdata)
+
+    pcr = LinearRegression().fit(pca_scores, ydata)
+    pcr2 = LinearRegression().fit(pca2_scores, ydata)
+
     yPfit = pcr.predict(pca.transform(xdata))
+    yP2fit = pcr2.predict(pca2.transform(xdata))
 
     variance_in_y = np.var(pls.y_scores_, axis = 0)
     fractions_of_explained_variance = variance_in_y / total_variance_in_y
 
     TSS = np.sum((ydata-np.mean(ydata))**2 )
 
-
     print(np.shape(y2fit[:,0]))
-    RSS_PLS = np.sum(np.subtract(ydata,y2fit[:,0])**2 )
+    RSS_PLS2 = np.sum(np.subtract(ydata,y2fit[:,0])**2 )
+    r2PLS2 = 1 - RSS_PLS2/TSS
+
+    RSS_PCR2 = np.sum((ydata-yP2fit)**2 )
+    r2PCR2 = 1 - RSS_PCR2/TSS
+
+    RSS_PLS = np.sum(np.subtract(ydata,yfit[:,0])**2 )
     r2PLS = 1 - RSS_PLS/TSS
 
     RSS_PCR = np.sum((ydata-yPfit)**2 )
@@ -84,23 +95,71 @@ if __name__ == "__main__":
 
     print('R^2 for all components (): %g' %r2_sum) #Sum of above
 
-    f, (ax, ax2) = plt.subplots(1,2)
+    # for i in range(0,nc):
+    #     Y_pred=np.dot(pls.x_scores_[:,i].reshape(-1,1),
+    #                     pls.y_loadings_[:,i].reshape(-1,1).T) * ydata.std(axis=0, ddof=1) + ydata.mean(axis=0)
+    #     r2_sum += round(r2_score(ydata,Y_pred),3)
+    #     fev.append(r2_sum)
+    #     print('R^2 for %d component: %g, cummulative: %g' %(i+1,round(r2_score(ydata,Y_pred),3), r2_sum))
+    #
+    # print('R^2 for all components (): %g' %r2_sum) #Sum of above
+
+    #asdasd
+    total_variance_in_x = np.sum(np.var(xdata, axis = 0))
+
+    print("shape: TotalXvar ", np.shape(total_variance_in_x))
+    print("shape: Xscores ", np.shape(pls.x_scores_))
+
+    # variance in transformed X data for each latent vector:
+    variance_in_x = []
+    for i in range(0,nc):
+        variance_in_x.append(
+                        np.var(
+                            np.dot(
+                                pls.x_scores_[:,i].reshape(-1,1),
+                                pls.x_loadings_[:,i].reshape(-1,1).T)
+                            ,axis = 0)
+                            )
+
+    print("shape: Xvar ", np.shape(variance_in_x))
+
+    # normalize variance by total variance:
+    fractions_of_explained_variance = np.sum(variance_in_x / total_variance_in_x, axis=1)
+
+    # for i in range(1,11):
+    #     x_partial = pls.x_scores_[:,0:i] * pls.x_loadings_[0:i,:]
+
+
+
+    f, axs = plt.subplots(2,3)
 
 #    ax.plot([np.sum(fractions_of_explained_variance[0:i]) for i in range(len(fractions_of_explained_variance))],'-bo')
-    ax.plot(range(1,11),fev,'-bo')
-    ax.set_xlabel("Number of PLS Components")
-    ax.set_ylabel("Percent Variance Explained in Y")
+    axs[0,0].plot(range(1,11),fev,'-bo')
+    axs[0,0].set_xlabel("Number of PLS Components")
+    axs[0,0].set_ylabel("Percent Variance Explained in Y")
 
+    axs[0,1].plot(ydata, y2fit, ' ob')
+    axs[0,1].plot(ydata, yP2fit, ' ^r')
+    axs[0,1].set_xlim(83,90)
+    axs[0,1].set_ylim(83,90)
+    axs[0,1].set_xlabel("Observed Response")
+    axs[0,1].set_ylabel("Fitted Response")
+    axs[0,1].legend(["PLSR with 2 Components  (R2 = %2.4f)" % (r2PLS2),
+                "PCR with 2 Components  (R2 = %2.4f)" % (r2PCR2)])
 
-    print("asdasd")
-    ax2.plot(ydata, y2fit, ' ob')
-    ax2.plot(ydata, yPfit, ' ^r')
-    ax2.set_xlim(83,90)
-    ax2.set_ylim(83,90)
-    ax2.set_xlabel("Observed Response")
-    ax2.set_ylabel("Fitted Response")
-    ax2.legend(["PLSR with 2 Components  (R2 = %2.4f)" % (r2PLS),
-                "PCR with 2 Components  (R2 = %2.4f)" % (r2PCR)])
+    axs[1,0].plot(range(1,11), 100*(np.cumsum(pca.explained_variance_ratio_)/np.sum(pca.explained_variance_ratio_)))
+    axs[1,0].plot(range(1,11), 100*np.cumsum(fractions_of_explained_variance)/np.sum(fractions_of_explained_variance))
+    axs[1,0].set_xlabel("Number of PLS/PCR Components")
+    axs[1,0].set_ylabel("Percent Variance Explained in X")
+    axs[1,0].legend(["PCR", "PLSR"])
 
+    axs[0,2].plot(ydata, yfit, ' ob')
+    axs[0,2].plot(ydata, yPfit, ' ^r')
+    axs[0,2].set_xlim(83,90)
+    axs[0,2].set_ylim(83,90)
+    axs[0,2].set_xlabel("Observed Response")
+    axs[0,2].set_ylabel("Fitted Response")
+    axs[0,2].legend(["PLSR with 2 Components  (R2 = %2.4f)" % (r2PLS),
+                "PCR with 2 Components  (R2 = %2.4f)" % (r2PCR2)])
 
     plt.show()
