@@ -41,35 +41,30 @@ def import_dataset(ds_name="octane"):
 if __name__ == "__main__":
 
     dataset = "gasoline"
+    dataset = "octane"
     wls, xdata, ydata = import_dataset(dataset)
-    xdata_norm = xdata-np.mean(xdata)
-    ydata_norm = ydata-np.mean(ydata)
 
     total_variance_in_y = np.var(ydata, axis = 0)
     nc=10
 
-    pls = PLSRegression(n_components=nc)
+    pls = PLSRegression(n_components=nc,)
     pls2 = PLSRegression(n_components=2)
     pls3 = PLSRegression(n_components=3)
-
-    plsC = PLSCanonical(n_components=nc)
 
     pca = PCA(n_components=nc)
     pca2 = PCA(n_components=2)
 
+    print("X shape: %s, Y shape: %s" % (np.shape(xdata),np.shape([ydata])))
+    print("Fitting PLS...")
     pls.fit(xdata, ydata)
     pls2.fit(xdata, ydata)
     pls3.fit(xdata, ydata)
-
-    plsC.fit(xdata_norm, ydata_norm)
-
+    print("Fitting PCA...")
     pca.fit(xdata)
     pca2.fit(xdata)
 
     yfit = pls.predict(xdata)
     y2fit = pls2.predict(xdata)
-
-    xcfit, ycfit = plsC.transform(xdata_norm, ydata_norm)
 
     pca_scores = pca.transform(xdata)
     pca2_scores = pca2.transform(xdata)
@@ -84,10 +79,6 @@ if __name__ == "__main__":
     fractions_of_explained_variance = variance_in_y / total_variance_in_y
 
     TSS = np.sum((ydata-np.mean(ydata))**2 )
-    TSSc = np.sum((ydata_norm-np.mean(ydata_norm))**2 )
-
-    print(np.shape(y2fit[:,0]))
-    print(np.shape(ycfit))
 
     RSS_PLS2 = np.sum(np.subtract(ydata,y2fit[:,0])**2 )
     r2PLS2 = 1 - RSS_PLS2/TSS
@@ -101,19 +92,8 @@ if __name__ == "__main__":
     RSS_PCR = np.sum((ydata-yPfit)**2 )
     r2PCR = 1 - RSS_PCR/TSS
 
-    RSS_PLSC = np.sum(np.subtract(ydata_norm,ycfit)**2 )
-    r2PLSC = 1 - RSS_PLSC/TSSc
-
-    #print("ycfit: ",ycfit)
-    #print("ydata_norm: ",ydata_norm)
-
-    print("r2PLS: %s, r2PLSC: %s" % (r2PLS, r2PLSC))
-
     r2_sum = 0
-    r2_sumc = 0
-
     fev = []
-    fevc = []
 
     for i in range(0,nc):
         Y_pred=np.dot(pls.x_scores_[:,i].reshape(-1,1),
@@ -122,30 +102,9 @@ if __name__ == "__main__":
         fev.append(r2_sum)
         print('R^2 for %d component: %g, cummulative: %g' %(i+1,round(r2_score(ydata,Y_pred),3), r2_sum))
 
-        Y_predc=np.dot(plsC.x_scores_[:,i].reshape(-1,1),
-                        plsC.y_loadings_[:,i].reshape(-1,1).T)
-        #print("YPRED: ", Y_predc)
-        Y_predc=Y_predc - np.mean(Y_predc)
-        #print("YPRED: ", Y_predc)
-        r2_sumc += round(r2_score(ydata_norm,Y_predc),3)
-        fevc.append(r2_sumc)
-
     print('R^2 for all components (): %g' %r2_sum) #Sum of above
 
-    # for i in range(0,nc):
-    #     Y_pred=np.dot(pls.x_scores_[:,i].reshape(-1,1),
-    #                     pls.y_loadings_[:,i].reshape(-1,1).T) * ydata.std(axis=0, ddof=1) + ydata.mean(axis=0)
-    #     r2_sum += round(r2_score(ydata,Y_pred),3)
-    #     fev.append(r2_sum)
-    #     print('R^2 for %d component: %g, cummulative: %g' %(i+1,round(r2_score(ydata,Y_pred),3), r2_sum))
-    #
-    # print('R^2 for all components (): %g' %r2_sum) #Sum of above
-
-    #asdasd
     total_variance_in_x = np.sum(np.var(xdata, axis = 0))
-
-    print("shape: TotalXvar ", np.shape(total_variance_in_x))
-    print("shape: Xscores ", np.shape(pls.x_scores_))
 
     # variance in transformed X data for each latent vector:
     variance_in_x = []
@@ -158,29 +117,21 @@ if __name__ == "__main__":
                             ,axis = 0)
                             )
 
-    print("shape: Xvar ", np.shape(variance_in_x))
-
     # normalize variance by total variance:
     fractions_of_explained_variance = np.sum(variance_in_x / total_variance_in_x, axis=1)
 
-    # for i in range(1,11):
-    #     x_partial = pls.x_scores_[:,0:i] * pls.x_loadings_[0:i,:]
-
-    # CROSS VALIDATION STAGE
+    '''
+    CROSS VALIDATION STAGE
+    '''
     plscv_err = []
     pcrcv_err = []
 
     xdata_norm = xdata-np.mean(xdata)
 
-    print(np.shape(pca.singular_values_))
-    print(np.shape(pca.components_))
-
-
     for i in range(1,nc+1):
         pls_cv = PLSRegression(n_components=i)
         plsrcv  = cross_validate(pls_cv, xdata, ydata, cv=10, scoring="neg_mean_squared_error")
         plscv_err.append(-1*np.mean(plsrcv["test_score"]))
-        print(i, np.mean(plsrcv["test_score"]))
 
         pca_cv = PCA(n_components=i)
         pca_cv.fit(xdata)
@@ -189,76 +140,93 @@ if __name__ == "__main__":
         pcr_cv = LinearRegression().fit(pca_scores, ydata)
         pcacv  = cross_validate(pcr_cv, pca_scores, ydata, cv=10, scoring="neg_mean_squared_error")
         pcrcv_err.append(-1*np.mean(pcacv["test_score"]))
-        print(i, np.mean(pcacv["test_score"]))
 
+    '''
+    Plotting section
+    '''
+    # Axes for dataset visualisation
+    f_dataset, axs_ds = plt.subplots(1,2)
+    ds_ax = axs_ds[0]
+    dsc_ax = axs_ds[1]
+    # Axes for PLSR PCR comparisons
+    f_comp, axs_comp = plt.subplots(2,2)
+    yvar_ax = axs_comp[0,0]
+    xvar_ax = axs_comp[0,1]
+    comp2_ax = axs_comp[1,0]
+    comp10_ax = axs_comp[1,1]
+    # Axes for results visualisation
+    f_res, axs_res = plt.subplots(3,1)
+    mse_ax = axs_res[0]
+    plsc_ax = axs_res[1]
+    pcrc_ax = axs_res[2]
 
-    # Plotting section
-
-    f, axs = plt.subplots(3,3)
-
-#    ax.plot([np.sum(fractions_of_explained_variance[0:i]) for i in range(len(fractions_of_explained_variance))],'-bo')
-    axs[0,0].plot(range(1,11),fev,'-bo')
-    #axs[0,0].plot(range(1,11),fevc,'-gx')
-    axs[0,0].set_xlabel("Number of PLS Components")
-    axs[0,0].set_ylabel("Percent Variance Explained in Y")
-
-    axs[0,1].plot(ydata, y2fit, ' ob')
-    axs[0,1].plot(ydata, yP2fit, ' ^r')
-    axs[0,1].plot(range(83,91), range(83,91), ':', color='#888888')
-    axs[0,1].set_xlim(83,90)
-    axs[0,1].set_ylim(83,90)
-    axs[0,1].set_xlabel("Observed Response")
-    axs[0,1].set_ylabel("Fitted Response")
-    axs[0,1].legend(["PLSR with 2 Components  (R2 = %2.4f)" % (r2PLS2),
-                "PCR with 2 Components  (R2 = %2.4f)" % (r2PCR2)],
-                prop={'size': 8})
-
-    axs[1,0].plot(range(1,11), 100*np.cumsum(fractions_of_explained_variance)/np.sum(fractions_of_explained_variance), "-ob")
-    axs[1,0].plot(range(1,11), 100*(np.cumsum(pca.explained_variance_ratio_)/np.sum(pca.explained_variance_ratio_)), '-^r')
-    axs[1,0].set_xlabel("Number of PLS/PCR Components")
-    axs[1,0].set_ylabel("Percent Variance Explained in X")
-    axs[1,0].legend(["PLSR", "PCR"],
+    # Plot dataset (raw)
+    ds_ax.plot(wls, xdata.values.T, linewidth=0.5)
+    ds_ax.set_title("Dataset " + dataset)
+    ds_ax.set_xlabel("wavelength [nm]")
+    # Plot dataset (mean centered)
+    dsc_ax.plot(wls, xdata_norm.values.T, linewidth=0.5)
+    dsc_ax.set_title("Dataset " + dataset + " (mean-normalised)")
+    dsc_ax.set_xlabel("wavelength [nm]")
+    # Plot Variance in Y
+    yvar_ax.plot(range(1,11),fev,'-bo',fillstyle='none', linewidth=0.5)
+    yvar_ax.set_xlabel("PLS Components")
+    yvar_ax.set_ylabel("Variance Explained in Y [%]")
+    yvar_ax.set_xlim(1,10)
+    yvar_ax.set_ylim(0.30,1.00)
+    yvar_ax.legend(["PLSR"],
                     prop={'size': 8})
-
-    axs[0,2].plot(ydata, yfit, ' ob')
-    axs[0,2].plot(ydata, yPfit, ' ^r')
-    axs[0,2].plot(range(83,91), range(83,91), ':', color='#888888')
-    axs[0,2].set_xlim(83,90)
-    axs[0,2].set_ylim(83,90)
-    axs[0,2].set_xlabel("Observed Response")
-    axs[0,2].set_ylabel("Fitted Response")
-    axs[0,2].legend(["PLSR (10 Components)  (R2 = %2.4f)" % (r2PLS),
-                "PCR with (10 Components)  (R2 = %2.4f)" % (r2PCR)],
-                prop={'size': 8})
-
-    axs[1,1].plot(range(1,11), plscv_err, '-ob')
-    axs[1,1].plot(range(1,11), pcrcv_err, '-^r')
-    axs[1,1].legend(["PLSR", "PCR"],
+    # Plot Variance in X
+    xvar_ax.plot(range(1,11), 100*np.cumsum(fractions_of_explained_variance)/np.sum(fractions_of_explained_variance), "-ob")
+    xvar_ax.plot(range(1,11), 100*(np.cumsum(pca.explained_variance_ratio_)/np.sum(pca.explained_variance_ratio_)), '-^r')
+    xvar_ax.set_xlabel("PLS/PCR Components")
+    xvar_ax.set_ylabel("Variance Explained in X [%]")
+    xvar_ax.legend(["PLSR", "PCR"],
                     prop={'size': 8})
-    axs[1,1].set_ylabel("Estimated Mean Squared Prediction Error")
-    axs[1,1].set_xlabel("Number of PLS/PCR Components")
-
-    axs[1,2].plot(pls3.x_weights_)
-    axs[1,2].set_xlabel("Variable")
-    axs[1,2].set_xlabel("PLS Weight")
-    axs[1,2].legend(["1st Component",
+    # Plot comparison with 2 components
+    comp2_ax.plot(ydata, y2fit, ' ob')
+    comp2_ax.plot(ydata, yP2fit, ' ^r')
+    comp2_ax.plot(range(83,91), range(83,91), ':', color='#888888')
+    comp2_ax.set_xlim(83,90)
+    comp2_ax.set_ylim(83,90)
+    comp2_ax.set_xlabel("Observed Response")
+    comp2_ax.set_ylabel("Fitted Response")
+    comp2_ax.legend(["PLSR (2 Comp.) (R2: %2.3f)" % (r2PLS2),
+                "PCR (2 Comp.)(R2: %2.3f)" % (r2PCR2)],
+                prop={'size': 8})
+    # Plot comparison with 10 components
+    comp10_ax.plot(ydata, yfit, ' ob')
+    comp10_ax.plot(ydata, yPfit, ' ^r')
+    comp10_ax.plot(range(83,91), range(83,91), ':', color='#888888')
+    comp10_ax.set_xlim(83,90)
+    comp10_ax.set_ylim(83,90)
+    comp10_ax.set_xlabel("Observed Response")
+    comp10_ax.set_ylabel("Fitted Response")
+    comp10_ax.legend(["PLSR (10 Comp.) (R2: %2.3f)" % (r2PLS),
+                "PCR (10 Comp.)  (R2: %2.3f)" % (r2PCR)],
+                prop={'size': 8})
+    # Plot comparison of MSE
+    mse_ax.plot(range(1,11), plscv_err, '-ob')
+    mse_ax.plot(range(1,11), pcrcv_err, '-^r')
+    mse_ax.legend(["PLSR", "PCR"],
+                    prop={'size': 8})
+    mse_ax.set_ylabel("Estimated Mean\nSquared Prediction Error")
+    mse_ax.set_xlabel("Number of PLS/PCR Components")
+    # Plot PCA component weights
+    plsc_ax.plot(pls3.x_weights_)
+    plsc_ax.set_xlabel("Variable")
+    plsc_ax.set_ylabel("PLS Weight")
+    plsc_ax.legend(["1st Component",
                      "2nd Component",
                      "3rd Component"],
                      prop={'size': 8})
-
-    axs[2,2].plot(pca.components_.T[:,0:4])
-    axs[2,2].set_xlabel("Variable")
-    axs[2,2].set_xlabel("PCA Loading")
-    axs[2,2].legend(["1st Component",
+    # Plot PLSR component loadings
+    pcrc_ax.plot(pca.components_.T[:,0:4])
+    pcrc_ax.set_xlabel("Variable")
+    pcrc_ax.set_ylabel("PCA Loading")
+    pcrc_ax.legend(["1st Component",
                      "2nd Component",
                      "3rd Component",
                      "4th Component"],
                      prop={'size': 8})
-
-    axs[2,0].plot(xdata.values.T)
-    axs[2,0].set_title("Dataset " + dataset)
-
-    axs[2,1].plot(xdata_norm.values.T)
-    axs[2,1].set_title("Dataset " + dataset + " (mean-normalised)")
-
     plt.show()

@@ -16,3 +16,7 @@ Preview:
 
 ![3dview](img/datasets_3d.png "3D plot of datasets")
 ![PLSR vs PCR](img/plsr-pcr.png "PLSR vs PCR comparison")
+
+# Resources:
+- [A simple explanation of Partial Least Squares](http://users.cecs.anu.edu.au/~kee/pls.pdf)
+- [Partial Least Squares. A tutorial](https://maths.ucd.ie/~brendan/chemometrics/PLS_TUTORIAL.pdf)
